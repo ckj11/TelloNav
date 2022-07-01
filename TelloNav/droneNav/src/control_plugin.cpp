@@ -16,19 +16,26 @@ namespace gazebo {
                 this->update_connection = event::Events::ConnectWorldUpdateBegin(
                     std::bind(&TelloControl::update, this));
 
+                this->currentPosition = this->model->WorldPose();
+
+                this->currentSpeed = ignition::math::Vector3d(0, 0, 0);
+
+                this->targetPosition = ignition::math::Pose3d(0, 0, 0, 0, 0, 0);
             }
 
             void update() {
-
+                
             }
 
         private:
             physics::ModelPtr model;
             event::ConnectionPtr update_connection;
 
-            ignition::math::Pose3d currentObjective;
+            ignition::math::Pose3d targetPosition;
             ignition::math::Pose3d currentPosition;
+            ignition::math::Vector3d currentSpeed;
 
+            
 
 
 
