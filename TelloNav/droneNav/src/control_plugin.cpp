@@ -15,6 +15,7 @@
 
 #include <sstream>
 #include <string>
+#include <iostream>
 
 
 namespace gazebo {
@@ -22,39 +23,51 @@ namespace gazebo {
     class TelloControl : public ModelPlugin {
         public:
             void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
-                if (!ros::isInitialized()) {
-                    int argc = 0;
-                    char **argv = NULL;
-                    ros::init(argc, argv, "Tello",
-                    ros::init_options::NoSigintHandler);
-                }
+                // if (!ros::isInitialized()) {
+                //     int argc = 0;
+                //     char **argv = NULL;
+                //     ros::init(argc, argv, "Tello",
+                //     ros::init_options::NoSigintHandler);
+                // }
                 
                 this->model = _parent;
 
                 this->body = this->model->GetLink((std::string) "Tello::link_0_clone");
 
-                this->rosNode.reset(new ros::NodeHandle("/Gazebo_Tello"));
+                this->rosNode.reset(new ros::NodeHandle("/Tello"));
 
                 //Set subscriber options for sub topic
                 ros::SubscribeOptions so = 
                 ros::SubscribeOptions::create<geometry_msgs::Twist>(
-                "/" + this->model->GetName() + "/location",
+                "/" + this->model->GetName() + "/target",
                 1,
-                boost::bind(&TelloControl::OnRosMsg, this, _1),
-                ros::VoidPtr(), &this->rosQueue);
+                boost::bind(&TelloControl::OnRosTargetMsg, this, _1),
+                ros::VoidPtr(), &this->rosTargetQueue);
 
                 //Subscribe to topic using above options
-                this->sub_pos = this->rosNode->subscribe(so);
+                this->sub_target = this->rosNode->subscribe(so);
 
-                //Set up queue helper thread
-                this->rosQueueThread = std::thread(std::bind(&TelloControl::QueueThread, this));
+                //Set subscriber options for target topic
+                so = ros::SubscribeOptions::create<std_msgs::Float32>(
+                "/" + this->model->GetName() + "/speed",
+                1,
+                boost::bind(&TelloControl::OnRosSpeedMsg, this, _1),
+                ros::VoidPtr(), &this->rosSpeedQueue);
+
+                this->sub_speed = this->rosNode->subscribe(so);
+                
+                //Set up target queue helper thread
+                this->rosTargetQueueThread = std::thread(std::bind(&TelloControl::QueueTargetThread, this));
+
+                //Set up speed queue helper thread
+                this->rosSpeedQueueThread = std::thread(std::bind(&TelloControl::QueueSpeedThread, this));
 
                 this->update_connection = event::Events::ConnectWorldUpdateBegin(
                     std::bind(&TelloControl::update, this));
 
                 this->targetPosition = ignition::math::Pose3d(1, 1, 1, 0, 0, 0);
 
-                this->currentSpeed = 0.5;
+                this->currentSpeed = 10;
 
                 this->pub_pos = rosNode->advertise<std_msgs::String>("location", 10);
 
@@ -80,44 +93,32 @@ namespace gazebo {
                 
                 //give model that set speed
                 this->model->SetLinearVel(heading);
+                
 
-
-
-            // if(this->targetPosition.Pos().X() > this->model->WorldPose().Pos().X()) {
-            //     this->currentSpeed.X(1);
-            // }
-            // else {
-            //     this->currentSpeed.X(0);
-            // }
-
-            // if(this->targetPosition.Pos().Y() > this->model->WorldPose().Pos().Y()) {
-            //     this->currentSpeed.Y(1);
-            // }
-            // else {
-            //     this->currentSpeed.Y(0);
-            // }
-            
-            // if(this->targetPosition.Pos().Z() > this->model->WorldPose().Pos().Z()) {
-            //     this->currentSpeed.Z(1);
-            // }
-            // else {
-            //     this->currentSpeed.Z(0);
-            // }
-            
-            // this->model->SetLinearVel(this->currentSpeed);
             }
 
-        void OnRosMsg(const geometry_msgs::TwistConstPtr &_msg) {
-             targetPosition.Pos().X(_msg->linear.x);
-             targetPosition.Pos().Y(_msg->linear.y);
-             targetPosition.Pos().Z(_msg->linear.z);
+        void OnRosTargetMsg(const geometry_msgs::TwistConstPtr &_msg) {
+            targetPosition.Pos().X(_msg->linear.x);
+            targetPosition.Pos().Y(_msg->linear.y);
+            targetPosition.Pos().Z(_msg->linear.z);
+        }
+
+        void OnRosSpeedMsg(const std_msgs::Float32ConstPtr &_msg) {
+            this->currentSpeed = _msg->data;
             
         }
 
-        void QueueThread() {
+        void QueueTargetThread() {
             static const double timeout = 0.01;
             while(this->rosNode->ok()) {
-                this->rosQueue.callAvailable(ros::WallDuration(timeout));
+                this->rosTargetQueue.callAvailable(ros::WallDuration(timeout));
+            }
+        }
+
+        void QueueSpeedThread() {
+            static const double timeout = 0.01;
+            while(this->rosNode->ok()) {
+                this->rosTargetQueue.callAvailable(ros::WallDuration(timeout));
             }
         }
 
@@ -137,17 +138,20 @@ namespace gazebo {
             //Publisher object
             ros::Publisher pub_pos;
 
-            //Subscriber object
-            ros::Subscriber sub_pos;
+            //Subscriber objects
+            ros::Subscriber sub_target;
+            ros::Subscriber sub_speed;
             
             //Node handle for publishing and subscribing
             std::unique_ptr<ros::NodeHandle> rosNode;
 
             //Callback queue for messages
-            ros::CallbackQueue rosQueue;
+            ros::CallbackQueue rosTargetQueue;
+            ros::CallbackQueue rosSpeedQueue;
 
             //Thread for callback queue
-            std::thread rosQueueThread;
+            std::thread rosTargetQueueThread;
+            std::thread rosSpeedQueueThread;
 
             std_msgs::String msg;
 
