@@ -23,12 +23,12 @@ namespace gazebo {
     class TelloControl : public ModelPlugin {
         public:
             void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
-                // if (!ros::isInitialized()) {
-                //     int argc = 0;
-                //     char **argv = NULL;
-                //     ros::init(argc, argv, "Tello",
-                //     ros::init_options::NoSigintHandler);
-                // }
+                if (!ros::isInitialized()) {
+                    int argc = 0;
+                    char **argv = NULL;
+                    ros::init(argc, argv, "Tello",
+                    ros::init_options::NoSigintHandler);
+                }
                 
                 this->model = _parent;
 
@@ -48,13 +48,14 @@ namespace gazebo {
                 this->sub_target = this->rosNode->subscribe(so);
 
                 //Set subscriber options for target topic
-                so = ros::SubscribeOptions::create<std_msgs::Float32>(
+                ros::SubscribeOptions so2 = 
+                ros::SubscribeOptions::create<std_msgs::Float32>(
                 "/" + this->model->GetName() + "/speed",
                 1,
                 boost::bind(&TelloControl::OnRosSpeedMsg, this, _1),
                 ros::VoidPtr(), &this->rosSpeedQueue);
 
-                this->sub_speed = this->rosNode->subscribe(so);
+                this->sub_speed = this->rosNode->subscribe(so2);
                 
                 //Set up target queue helper thread
                 this->rosTargetQueueThread = std::thread(std::bind(&TelloControl::QueueTargetThread, this));
@@ -103,9 +104,8 @@ namespace gazebo {
             targetPosition.Pos().Z(_msg->linear.z);
         }
 
-        void OnRosSpeedMsg(const std_msgs::Float32ConstPtr &_msg) {
-            this->currentSpeed = _msg->data;
-            
+        public: void OnRosSpeedMsg(const std_msgs::Float32ConstPtr &_msg) {
+            currentSpeed = _msg->data;
         }
 
         void QueueTargetThread() {
@@ -115,10 +115,10 @@ namespace gazebo {
             }
         }
 
-        void QueueSpeedThread() {
+        private: void QueueSpeedThread() {
             static const double timeout = 0.01;
             while(this->rosNode->ok()) {
-                this->rosTargetQueue.callAvailable(ros::WallDuration(timeout));
+                this->rosSpeedQueue.callAvailable(ros::WallDuration(timeout));
             }
         }
 
@@ -133,7 +133,7 @@ namespace gazebo {
 
             ignition::math::Pose3d targetPosition;
             ignition::math::Pose3d currentPosition;
-            double currentSpeed;
+            float currentSpeed;
 
             //Publisher object
             ros::Publisher pub_pos;
