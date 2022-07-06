@@ -4,6 +4,7 @@
 
 #include <ignition/math/Vector3.hh>
 #include <ignition/math/Pose3.hh>
+#include <ignition/math/Quaternion.hh>
 
 #include "ros/ros.h"
 #include "ros/callback_queue.h"
@@ -85,16 +86,19 @@ namespace gazebo {
 
                 //Calculate heading to next point
                 ignition::math::Vector3d heading = (targetPosition - currentPosition).Pos();
+                ignition::math::Vector3d rotation = (targetPosition - currentPosition).Rot().Euler();
 
                 //Get unit vector
                 heading.Normalize();
+                rotation.Normalize();
 
                 //Multiply speed to get velocity vector to the target
                 heading *= currentSpeed;
+                rotation *= currentSpeed;
                 
                 //give model that set speed
                 this->model->SetLinearVel(heading);
-                
+                this->model->SetAngularVel(rotation);
 
             }
 
@@ -102,6 +106,9 @@ namespace gazebo {
             targetPosition.Pos().X(_msg->linear.x);
             targetPosition.Pos().Y(_msg->linear.y);
             targetPosition.Pos().Z(_msg->linear.z);
+
+            ignition::math::Vector3d rot(_msg->angular.x, _msg->angular.y, _msg->angular.z);
+            targetPosition.Rot().Euler(rot);
         }
 
         public: void OnRosSpeedMsg(const std_msgs::Float32ConstPtr &_msg) {
