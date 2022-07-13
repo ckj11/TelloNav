@@ -20,6 +20,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <cmath>
 #include "../include/droneNav/pid.hpp"
 
 
@@ -60,7 +61,7 @@ namespace gazebo {
                 ros::SubscribeOptions so = 
                 ros::SubscribeOptions::create<geometry_msgs::Twist>(
                 "/" + this->model->GetName() + "/target",
-                1,
+                10,
                 boost::bind(&TelloControl::OnRosTargetMsg, this, _1),
                 ros::VoidPtr(), &this->rosTargetQueue);
 
@@ -69,28 +70,32 @@ namespace gazebo {
 
                 //Set up target queue helper thread
                 this->rosTargetQueueThread = std::thread(std::bind(&TelloControl::QueueTargetThread, this));
-
-                //Set up speed queue helper thread
-
+                
+                //Hook into gazebo world update event
                 this->update_connection = event::Events::ConnectWorldUpdateBegin(
                     std::bind(&TelloControl::update, this));
 
                 this->targetPosition = ignition::math::Pose3d(0, 0, 1, 0, 0, 0);
 
-                set_target_velocities(0, 0, 1, 0);
+                set_target_position(0, 0, 1, 0);
 
                 this->rotationSpeed = 1;
 
-                this->pub_pos = rosNode->advertise<std_msgs::String>("location", 10);
+                this->pub_pos = rosNode->advertise<geometry_msgs::Twist>("location", 10);
             }
 
             void update() {
                 this->currentPosition = this->body->WorldPose();
-                ss << currentPosition.Pos().X() << " " << currentPosition.Pos().Y() << " " << currentPosition.Pos().Z();
-                msg.data = ss.str();
+                geometry_msgs::Twist msg;
+                msg.linear.x = currentPosition.Pos().X();
+                msg.linear.y = currentPosition.Pos().Y();
+                msg.linear.z = currentPosition.Pos().Z();
+
+                msg.angular.x = currentPosition.Rot().X();
+                msg.angular.y = currentPosition.Rot().Y();
+                msg.angular.z = currentPosition.Rot().Z();
+
                 pub_pos.publish(msg);
-                ss.str("");
-                ss.clear();
 
                 //Calculate the dt
                 double dt = (ros::Time::now() - prevTime).toSec();
@@ -147,14 +152,17 @@ namespace gazebo {
             ignition::math::Vector3d rot(_msg->angular.x, _msg->angular.y, _msg->angular.z);
             targetPosition.Set(pos,rot);
 
-            set_target_velocities(_msg->linear.x, _msg->linear.y, _msg->linear.z, _msg->angular.z);
+            set_target_position(_msg->linear.x, _msg->linear.y, _msg->linear.z, _msg->angular.z);
             
+            while(NotClose(&currentPosition, &targetPosition)) {
+                
+            }
         }
 
         void QueueTargetThread() {
-            static const double timeout = 0.01;
+            static const double timeout = 5;
             while(this->rosNode->ok()) {
-                this->rosTargetQueue.callAvailable(ros::WallDuration(timeout));
+                this->rosTargetQueue.callOne();
             }
         }
 
@@ -174,7 +182,7 @@ namespace gazebo {
             this->prop4->SetTorque(tor);
         }
 
-         void set_target_velocities(double x, double y, double z, double yaw)
+         void set_target_position(double x, double y, double z, double yaw)
         {
             xController.set_target(x);
             yController.set_target(y);
@@ -184,6 +192,17 @@ namespace gazebo {
         inline double clamp(const double v, const double max)
         {
             return v > max ? max : (v < -max ? -max : v);
+        }
+
+        bool NotClose(ignition::math::Pose3d *p1, ignition::math::Pose3d *p2) {
+            if(std::abs(p1->Pos().X() - p2->Pos().X()) < 0.05) {
+                if(std::abs(p1->Pos().Y() - p2->Pos().Y()) < 0.05) {
+                    if(std::abs(p1->Pos().Z() - p2->Pos().Z()) < 0.05) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
         private:
@@ -211,18 +230,15 @@ namespace gazebo {
 
             //Subscriber objects
             ros::Subscriber sub_target;
-            ros::Subscriber sub_speed;
             
             //Node handle for publishing and subscribing
             std::unique_ptr<ros::NodeHandle> rosNode;
 
             //Callback queues for messages
             ros::CallbackQueue rosTargetQueue;
-            ros::CallbackQueue rosSpeedQueue;
 
             //Threads for callback queue
             std::thread rosTargetQueueThread;
-            std::thread rosSpeedQueueThread;
 
             std_msgs::String msg;
 
