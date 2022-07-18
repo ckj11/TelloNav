@@ -1,27 +1,15 @@
 #pragma once 
-
-class Cell {
-    private:
-        bool visited;
-        bool blocked;
-    public:
-    Cell() {   
-        this->visited = false;
-        this->blocked = false;
-    }
-
-    Cell(bool blocked) {
-        this->blocked = blocked;
-        this->visited = false;
-    }
-
-    void setVisted(bool visited) {
-        this->visited = visited;
-    }
-
-
-    void setBlocked(bool blocked) {
-        this->blocked = blocked; 
-    }
-
+#include <tuple>
+struct Cell {
+    std::tuple<int, int, int> parent;
+    double f, g, h;
+	bool blocked;
+    Cell()
+		: parent(-1, -1, -1)
+		, f(-1)
+		, g(-1)
+		, h(-1)
+		, blocked(false)
+	{
+	}
 };

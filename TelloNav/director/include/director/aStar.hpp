@@ -1,47 +1,63 @@
 #pragma once
 #include "cell.hpp"
-#include "priorityQueue.hpp"
+#include <queue>
+#include <stack>
+#include <cmath>
+
+typedef std::tuple<int, int, int> Point;
+
 class AStar {
     private:
-        Cell*** cells;
-        int xSize;
-        int ySize;
-        int zSize;
-        //This is the "voxel" resolution for mapping onto the real world
-        int resolution;
+        Cell*** grid;
+        Point src;
+        Point dest;
+        int rSize;
+        int cSize;
+        int dSize;
     public:
-        AStar() {
-            this->cells = nullptr;
-            this->xSize = 0;
-            this->ySize = 0;
-            this->zSize = 0;
+
+        AStar(Point src, Point dest, Cell*** grid, int rSize, int cSize, int dSize) {
+            this->grid = grid;
+            this->src = src;
+            this->dest = dest;
         }
 
-        AStar(int x, int y, int z) {
-            //Initialize 3D dynamic array
+        //Checks to make sure that the point is a valid point
+        bool isValid(Point p) {
+            if(std::get<0>(p) >= 0 && std::get<1>(p) >= 0 && std::get<0>(p) >= 0 &&
+               std::get<0>(p) < dSize && std::get<1>(p) < cSize && std::get<0>(p) < rSize) {
+                return true;
+               }
+        }
 
-            //Make rows
-            cells = new Cell**[z];
-
-            //Make columns
-            for(int i = 0; i < z; ++i) {
-                cells[i] = new Cell*[x];
+        //Checks to see if the node is blocked or not
+        bool isUnBlocked(Point p) {
+            if(grid[std::get<2>(p)][std::get<1>(p)][std::get<0>(p)].blocked) {
+                return false;
             }
-
-            //Make the 3rd dimension
-            for(int i = 0; i < z; ++i) {
-                for(int j = 0; j < x; ++j) {
-                    cells[i][j] = new Cell[y];
-                }
+            else {
+                return true;
             }
-
         }
 
-        AStar(Cell*** cells) {
-            this->cells = cells;
+        //Checks to see if the current node is the destination node or not
+        bool isDestination(Point p) {
+            if(p == dest) {
+                return true;
+            }
+            else {
+                return false;
+            }
         }
 
-        ~AStar() {
-            
+        //Calculate the H value between current node and the destination node
+        double calculateHValue(Point p) {
+            return std::sqrt(std::pow((std::get<0>(dest) - std::get<0>(p)) , 2) +
+                             std::pow((std::get<1>(dest) - std::get<1>(p)) , 2) +
+                             std::pow((std::get<2>(dest) - std::get<2>(p)) , 2));
+        }
+
+        void AStarSearch() {
+
         }
 };
