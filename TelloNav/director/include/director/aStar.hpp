@@ -7,6 +7,8 @@ class AStar {
         int xSize;
         int ySize;
         int zSize;
+        //This is the "voxel" resolution for mapping onto the real world
+        int resolution;
     public:
         AStar() {
             this->cells = nullptr;
@@ -32,7 +34,6 @@ class AStar {
                     cells[i][j] = new Cell[y];
                 }
             }
-
 
         }
 
