@@ -41,15 +41,15 @@ int main(int argc, char** argv) {
     AStar<xSize, ySize, zSize> aStar(Point(0, 0, 0), Point(-5, -5, -5), grid);
     aStar.aStarSearch();
 
-    while(ros::ok()) {
-        if(count < size) {
-            //pub.publish(msgs[count]);
-        }
-        //ros::spinOnce();
-        //loop_rate.sleep();
-        count++;
-    }
-
+    // while(ros::ok()) {
+    //     if(count < size) {
+    //         //pub.publish(msgs[count]);
+    //     }
+    //     //ros::spinOnce();
+    //     //loop_rate.sleep();
+    //     count++;
+    // }
+    
     
     return 0;
 }
