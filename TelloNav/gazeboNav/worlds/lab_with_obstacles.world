@@ -3632,9 +3632,9 @@
       <pose>0.575718 -1.31378 0 0 -0 0</pose>
     </model>
     <include>
+        <name>Tello</name>
         <uri>model://Tello</uri>
-        <plugin name="control_plugin" filename="libcontrol_plugin.so"/>
-        <pose>0 0 1 0 0 0 </pose>
+        <pose>0 0 1 0 0 0</pose>
     </include>
   </world>
 </sdf>

@@ -28,23 +28,23 @@ namespace gazebo {
 
     class TelloControl : public ModelPlugin {
         public:
-            void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {
-                if (!ros::isInitialized()) {
-                    int argc = 0;
-                    char **argv = NULL;
-                    ros::init(argc, argv, "Tello",
-                    ros::init_options::NoSigintHandler);
-                }
+            void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) {           
+                // int argc = 0;
+                // char **argv = NULL;
+                // ros::init(argc, argv, "Tello",
+                // ros::init_options::AnonymousName);
+                
                 if (_sdf->HasElement("center_of_mass")) {
                     centerOfMass = _sdf->GetElement("center_of_mass")->Get<ignition::math::Vector3d>();
                 }
 
+                
                 this->model = _parent;
                 this->gravity = this->model->GetWorld()->Gravity();
 
                 //Simulation tuning for gravity cancelation
                 //This happens because this update functions runs faster than the simulation so the gravity vector is applied twice
-                double factor = 0.5004;
+                double factor = 1.0005; //0.5004
                 gravity *= factor;
                 
                 std::cout << "gravity vector: " << gravity.X() << " " << gravity.Y() << " " << gravity.Z() << std::endl;
@@ -54,6 +54,9 @@ namespace gazebo {
                 this->prop2 = this->model->GetLink((std::string)"Tello::prop_2");
                 this->prop3 = this->model->GetLink((std::string)"Tello::prop_3");
                 this->prop4 = this->model->GetLink((std::string)"Tello::prop_4");
+                
+                //Initialize the ros node handle with unique tello id and name
+                
 
                 this->rosNode.reset(new ros::NodeHandle("/Tello"));
 
@@ -118,7 +121,6 @@ namespace gazebo {
                 
                 //Calc force and torque
                 ignition::math::Vector3d force = lin_ubar * body->GetInertial()->Mass();
-                ignition::math::Vector3d torque = ang_ubar * body->GetInertial()->MOI();
 
                 //Set roll and pitch to zero
                 ignition::math::Pose3d pose = body->WorldPose();
@@ -126,8 +128,14 @@ namespace gazebo {
                 pose.Rot().Y(0);
                 body->SetWorldPose(pose);
 
+                //Clamp accelerations based on global limits
+                force = clampAccel(force);
+
+                //Apply clamped control force determined by PID controller
                 body->AddForce(force);
-                body->AddRelativeTorque(torque);
+
+                //Clamp velocity if it is over the limit
+                body->SetLinearVel(clampVelocity(body->RelativeLinearVel()));
 
                 //Calculate vector for rotation
                 ignition::math::Vector3d rotation = (targetPosition - currentPosition).Rot().Euler();
@@ -189,9 +197,30 @@ namespace gazebo {
             zController.set_target(z);
         }
 
-        inline double clamp(const double v, const double max)
-        {
-            return v > max ? max : (v < -max ? -max : v);
+        ignition::math::Vector3d clampVelocity(ignition::math::Vector3d vec) {
+            if(std::abs(vec.X()) > MAX_XY_V) {
+                vec.X(MAX_XY_V);
+            }
+            if(std::abs(vec.Y()) > MAX_XY_V) {
+                vec.Y(MAX_XY_V);
+            }
+            if(std::abs(vec.Z()) > MAX_Z_V) {
+                vec.Z(MAX_Z_V);
+            }
+            return vec;
+        }
+
+        ignition::math::Vector3d clampAccel(ignition::math::Vector3d vec) {
+            if(std::abs(vec.X()) > MAX_XY_A) {
+                vec.X(MAX_XY_A);
+            }
+            if(std::abs(vec.Y()) > MAX_XY_A) {
+                vec.Y(MAX_XY_A);
+            }
+            if(std::abs(vec.Z()) > MAX_XY_A) {
+                vec.Z(MAX_Z_A);
+            }
+            return vec;
         }
 
         bool NotClose(ignition::math::Pose3d *p1, ignition::math::Pose3d *p2) {
@@ -245,20 +274,19 @@ namespace gazebo {
             std::stringstream ss;
             
             //PID controllers for axis for Tello
-            pid::Controller xController{false, 0.1, 0, 0.5};
-            pid::Controller yController{false, 0.1, 0, 0.5};
-            pid::Controller zController{false, 0.1, 0.02, 1};
+            pid::Controller xController{false, 0.5, 0, 1.1};
+            pid::Controller yController{false, 0.5, 0, 1.1};
+            pid::Controller zController{false, 0.5, 0, 1.1};
 
             ros::Time prevTime;
 
-            const double MAX_XY_V = 8.0;
+            const double MAX_XY_V = 4.0;
             const double MAX_Z_V = 4.0;
             const double MAX_ANG_V = M_PI;
 
             const double MAX_XY_A = 8.0;
             const double MAX_Z_A = 4.0;
             const double MAX_ANG_A = M_PI;
-
 
 
 
