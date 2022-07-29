@@ -135,7 +135,7 @@ namespace gazebo {
                 body->AddForce(force);
 
                 //Clamp velocity if it is over the limit
-                body->SetLinearVel(clampVelocity(body->RelativeLinearVel()));
+                body->SetLinearVel(clampVelocity(body->WorldLinearVel()));
 
                 //Calculate vector for rotation
                 ignition::math::Vector3d rotation = (targetPosition - currentPosition).Rot().Euler();
@@ -217,7 +217,7 @@ namespace gazebo {
             if(std::abs(vec.Y()) > MAX_XY_A) {
                 vec.Y(MAX_XY_A);
             }
-            if(std::abs(vec.Z()) > MAX_XY_A) {
+            if(std::abs(vec.Z()) > MAX_Z_A) {
                 vec.Z(MAX_Z_A);
             }
             return vec;
