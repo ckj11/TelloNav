@@ -29,4 +29,4 @@ These packages are aStar enabled directors for sending waypoints to the drones. 
 respectively. In order to run both of them, run `rosrun nav1 nav1` and `rosrun nav2 nav2` after launching the gazeboNav package. 
 
 # Tello Model
-Make sure to put the Tello model your system gazebo model path so that that the algorithm can find it
+Make sure to put the Tello model your system gazebo model path so that the plugin can find it. It is located in `(name of your workspace)/src/Tellonav/models`. 
