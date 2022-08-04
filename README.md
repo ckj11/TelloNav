@@ -27,3 +27,6 @@ the tolerance. This was accomplised using a custom callbackqueue method that onl
 # nav1 and nav2
 These packages are aStar enabled directors for sending waypoints to the drones. They subscribe specificially to `/Tello1/target` and `/Tello2/target`
 respectively. In order to run both of them, run `rosrun nav1 nav1` and `rosrun nav2 nav2` after launching the gazeboNav package. 
+
+# Tello Model
+Make sure to put the Tello model your system gazebo model path so that that the algorithm can find it
