@@ -3634,6 +3634,7 @@
     <include>
       <uri>model://laser</uri>
       <pose>0 0 1 0 0 0</pose>
+      <plugin name='lidar_world_scanner' filename='liblidar_world_scanner.so'/>
     </include>
   </world>
 </sdf>

@@ -1,0 +1,7 @@
+digraph G {
+"world" -> "base_link"[label="Broadcaster: /gazebo\nAverage rate: 949.000 Hz\nMost recent transform: 536.647 ( 0.001 sec old)\nBuffer length: 4.549 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 536.648"[ shape=plaintext ] ;
+ }->"world";
+}
